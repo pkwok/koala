@@ -13,17 +13,40 @@ module Koala
       #                 signed by default, unless you pass appsecret_proof:
       #                 false as an option to the API call. (See
       #                 https://developers.facebook.com/docs/graph-api/securing-requests/)
+      # @param [DateTime] token_expiry token_expiry, The date in which your token will expire.
       # @note If no access token is provided, you can only access some public information.
       # @return [Koala::Facebook::API] the API client
-      def initialize(access_token = nil, app_secret = nil)
+      def initialize(access_token = nil, app_secret = nil, token_expiry=nil)
         @access_token = access_token
         @app_secret = app_secret
+        @token_expiry = token_expiry
       end
 
       attr_reader :access_token, :app_secret
 
       include GraphAPIMethods
       include RestAPIMethods
+
+      # Determines if access_token is valid
+      # @param [String] access_token access token
+      # @param [String] app_secret app secret, for tying your access tokens to your app secret
+      # @param [DateTime] token_expiry token_expiry, The date in which your token will expire
+      #                 If you provide an app secret, your requests will be
+      #                 signed by default, unless you pass appsecret_proof:
+      #                 false as an option to the API call. (See
+      #                 https://developers.facebook.com/docs/graph-api/securing-requests/)
+      # @note If no access token is provided, you can only access some public information.
+      # @return [Boolean] Whether access_token is valid or not
+      def token_valid?
+        # Avoid api call if we know that token is expired
+        return false if @token_expiry && token_expiry < DateTime.now
+        begin
+          get_object("me")
+          true
+        rescue AuthenticationError
+          false
+        end
+      end
 
       # Makes a request to the appropriate Facebook API.
       # @note You'll rarely need to call this method directly.
